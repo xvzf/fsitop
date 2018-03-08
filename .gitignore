@@ -1,0 +1,5 @@
+./venv
+prototype/sitop2000/__pycache__/__init__.cpython-35.pyc
+prototype/sitop2000/__pycache__/inverter.cpython-35.pyc
+prototype/sitop2000/__pycache__/packet.cpython-35.pyc
+prototype/sitop2000/__pycache__/packet.cpython-36.pyc

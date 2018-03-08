@@ -1,8 +1,10 @@
+#!/usr/bin/env python3
 from binascii import hexlify, unhexlify
 import struct
 import re
 import unittest
 from enum import Enum
+from hashlib import sha256
 
 
 class PacketParseException(Exception):
@@ -27,25 +29,25 @@ class PacketType(Enum):
     RESPONSE = "&"
 
 
+# Should be correct
+# TYPE;TO;FROM;CMD;8DATA*CHECKSUM
+pattern_sitop_2000 = b'([\\$\\&])([0-9]{2});([0-9]{2});([0-9A-F]{2});(.{8})\\*([0-9A-F]{2})\r\n'
+# Compile regex pattern
+regex_matcher = re.compile(pattern_sitop_2000)
+
+
 class Packet(object):
     """
     Utility class for SITOP Solar 2000 packets
     """
-
-    # Should be correct
-    # TYPE;TO;FROM;CMD;8DATA*CHECKSUM
-    pattern_sitop_2000 = b'([\\$\\&])([0-9]{2});([0-9]{2});([0-9A-F]{2});(.{8})\\*([0-9A-F]{2})\r\n'
-
 
     def __init__(self, toparse:None, tobuild=None) -> None:
         """
         Helps parsing and building packets for the SITOP Solar 2000 solar inverter
         :param toparse: Bytestream which should be parsed
         :param tobuild: Dict for which a packet should be created
-        ! ONLY USE ONE OF THE KEYWORD PARAMETERS
+        !!! ONLY USE ONE OF THE KEYWORD PARAMETERS
         """
-        # Compile regex pattern
-        self.regex = re.compile(self.pattern_sitop_2000)
         
         # Check input
         if toparse and tobuild:
@@ -56,14 +58,16 @@ class Packet(object):
             self.built = False
             self.parse(toparse)
         
-        if tobuild and not tobuild.keys() is ["type", "to", "from", "cmd", "data"]:
-            raise PacketBuildException("Invalid input dict")
-        else:
+        if tobuild:
             # @TODO
             self.parsed = False
             self.built = True
-            pass
+            self.build(tobuild)
         
+    # TYPE;TO;FROM;CMD;8DATA*CHECKSUM
+    def build(self, parsedict):
+        # @TODO
+        pass
 
     def parse(self, bytestring: bytes) -> None:
         """
@@ -79,7 +83,7 @@ class Packet(object):
             return struct.unpack("B", unhexlify(bytestring.decode("ASCII")))[0]
 
         # Check against regex
-        matcher = self.regex.match(bytestring)
+        matcher = regex_matcher.match(bytestring)
 
         # Check if regex was successfull
         if not matcher:
@@ -166,7 +170,23 @@ class Packet(object):
         :return: Returns the parsed bytestream
         """
         return self.bytestring
+    
+    def __hash__(self):
+        return hexlify(
+                sha256(self.bytestring).digest()
+            ).decode("UTF-8")
+    
 
+    def __eq__(self, tocomp):
+        if self.__hash__() == tocomp.__hash__():
+            return True
+        return False
+    
+
+    def __ne__(self, tocomp):
+        if self.__hash__() != tocomp.__hash__():
+            return False
+        return True
 
 
 
@@ -176,7 +196,9 @@ class Packet(object):
 
 class packet_unittest(unittest.TestCase):
     
-    test_bytestring = b"$01;00;4B;00000000*4C\r\n"
+    test_bytestring =  b"$01;00;4B;00000000*4C\r\n"
+    test_bytestring2 = b'&00;01;4C;\x1c\x00\x1b\x00\x00\x00\xb6\x00*FC\r\n'
+
 
     def test_parse_without_error(self):
         p = Packet(self.test_bytestring)
@@ -196,7 +218,25 @@ class packet_unittest(unittest.TestCase):
     def test_parsed_bytestring(self):
         p = Packet(self.test_bytestring)
         self.assertEqual(self.test_bytestring, p.get_bytestream())
+    
+    def test_equals(self):
+        p = Packet(self.test_bytestring)
+        self.assertTrue(p == p)
+    
+    def test_not_equals(self):
+        p0 = Packet(self.test_bytestring)
+        p1 = Packet(self.test_bytestring2)
+        self.assertFalse(p0 == p1)
 
 
 if __name__ == "__main__":
-    unittest.main()
+    testdict = {
+            'from': 0, 
+            'data': [48, 48, 48, 48, 48, 48, 48, 48], 
+            'to': 1, 
+            'type': b'$', 
+            'cmd': 75 }
+    
+    p = Packet(None, testdict)
+    print(p.bytestring)
+    #unittest.main()
