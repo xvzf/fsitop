@@ -31,7 +31,7 @@ class PacketType(Enum):
 
 # Should be correct
 # TYPE;TO;FROM;CMD;8DATA*CHECKSUM
-pattern_sitop_2000 = b'([\\$\\&])([0-9]{2});([0-9]{2});([0-9A-F]{2});(.{8})\\*([0-9A-F]{2})\r\n'
+pattern_sitop_2000 = b'([\\$\\&])([0-9]{2});([0-9]{2});([0-9A-F]{2});([\s\S]{8})\\*([0-9A-F]{2})\r\n'
 # Compile regex pattern
 regex_matcher = re.compile(pattern_sitop_2000)
 
@@ -46,7 +46,7 @@ class Packet(object):
         Helps parsing and building packets for the SITOP Solar 2000 solar inverter
         :param toparse: Bytestream which should be parsed
         :param tobuild: Dict for which a packet should be created
-        !!! ONLY USE ONE OF THE KEYWORD PARAMETERS
+        !!! ONLY USE ONE OF THE KEYWORD PARAMETERS, other one should be set to None
         """
         
         # Check input
@@ -67,7 +67,7 @@ class Packet(object):
     # TYPE;TO;FROM;CMD;8DATA*CHECKSUM
     def build(self, parsedict):
         # @TODO
-        pass
+        raise PacketBuildException("@TODO building a packet from a dict is currently not possible")
 
     def parse(self, bytestring: bytes) -> None:
         """
@@ -187,6 +187,9 @@ class Packet(object):
         if self.__hash__() != tocomp.__hash__():
             return False
         return True
+    
+    def __str__(self):
+        return f"TYPE:{self.pdict['type']},"
 
 
 
